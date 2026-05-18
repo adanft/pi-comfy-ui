@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build / package outputs
+dist/
+build/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local agent runtime state
+.atl/
+.agents/
+.pi/
+.pi-lens/
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
