@@ -4,6 +4,14 @@
   "description": "Comfortable spacing and panel-style input for Pi's interactive TUI.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adanft/pi-comfy-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/adanft/pi-comfy-ui/issues"
+  },
+  "homepage": "https://github.com/adanft/pi-comfy-ui#readme",
   "keywords": [
     "pi-package",
     "pi-extension",
