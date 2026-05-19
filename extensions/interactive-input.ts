@@ -15,7 +15,8 @@ function isDynamicBorder(line: string): boolean {
 }
 
 function createSideBorderFromLine(line: string): string {
-	return line.replace(/─+/, "┃");
+	const sideBorder = truncateToWidth(line.replace("─", "┃"), 1, "");
+	return visibleWidth(sideBorder) === 1 ? sideBorder : "┃";
 }
 
 export function paintBorderedPanels(lines: string[], width: number): string[] {
