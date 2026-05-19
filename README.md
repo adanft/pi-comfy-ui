@@ -1,6 +1,6 @@
 # pi-comfy-ui
 
-Comfortable spacing and a panel-style input for Pi's interactive TUI.
+Comfortable spacing and panel styling for Pi's interactive TUI.
 
 ![pi-comfy-ui preview](assets/preview.png)
 
@@ -36,8 +36,10 @@ Override either value in Pi settings when you want different spacing:
 
 - `editorPaddingX` is Pi's native inner input/editor padding. If unset, this package uses `1` internally for its custom editor.
 - `contentPaddingX` is this package's outer layout padding for transcript, widgets, footer, and input panel alignment. If unset, this package uses `1` internally.
-- The input/editor background is painted from the active theme token `customMessageBg`. If your theme maps `customMessageBg` to a palette var like `panelAlt`, this package uses that palette color without duplicating the hex in extension settings.
-- The input/editor border is rendered on the left and right sides only; Pi's native top/bottom editor border is hidden.
+- The input/editor background is painted from the active theme token `customMessageBg`.
+- Interactive prompt panels, such as settings, model selection, confirms, selects, and structured questions, are painted from the active theme token `userMessageBg`.
+- The input/editor keeps Pi's original editor border color, but renders that border on the left and right sides only; Pi's native top/bottom editor border is hidden.
+- Interactive prompt panels keep Pi's original border line color, but replace the top/bottom border shape with left/right side rails.
 
 Supported aliases for outer layout padding:
 
@@ -53,7 +55,7 @@ Pi does not currently expose a public root-layout wrapper hook for extensions. T
 
 This keeps the change package-local, avoids editing the globally installed Pi files, and keeps Pi's native `editorPaddingX` responsible for input padding.
 
-The input background uses Pi's theme palette through `customMessageBg`; there is no separate extension color setting. The custom editor removes Pi's horizontal editor borders and reuses the same editor border color for left/right side rails.
+The input background uses Pi's theme palette through `customMessageBg`; there is no separate extension color setting. Interactive prompt panel backgrounds use `userMessageBg`. In both cases, pi-comfy-ui preserves the original border color and only changes the border shape plus the painted background.
 
 Because this extension monkey-patches shared TUI rendering, it may conflict with another extension that patches the same method. The patch is guarded with a global `Symbol` to avoid double-patching itself.
 
