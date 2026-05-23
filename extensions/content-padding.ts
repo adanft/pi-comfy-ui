@@ -99,8 +99,7 @@ function clampPaddingX(requested: number, width: number): number {
 	return Math.min(requested, maxForWidth);
 }
 
-function padLineX(line: string, paddingX: number): string {
-	const pad = " ".repeat(paddingX);
+function padLineX(line: string, pad: string): string {
 	return `${pad}${line}${pad}`;
 }
 
@@ -120,7 +119,10 @@ export function patchTuiRender(
 		const innerWidth = paddingX > 0 ? Math.max(1, width - paddingX * 2) : width;
 		const lines = paintLines(originalRender.call(this, innerWidth), innerWidth);
 
-		return paddingX > 0 ? lines.map((line) => padLineX(line, paddingX)) : lines;
+		if (paddingX <= 0) return lines;
+
+		const pad = " ".repeat(paddingX);
+		return lines.map((line) => padLineX(line, pad));
 	} as typeof proto.render;
 
 	proto[PATCH_FLAG] = true;

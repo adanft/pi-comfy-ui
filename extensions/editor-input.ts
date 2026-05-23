@@ -6,6 +6,8 @@ import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { type BackgroundPainter, stripAnsi } from "./ansi.js";
 
 function isHorizontalEditorBorder(line: string): boolean {
+	if (!line.includes("─")) return false;
+
 	const plain = stripAnsi(line);
 	return plain.includes("─") && /^[─ ↑↓0-9more]+$/.test(plain);
 }

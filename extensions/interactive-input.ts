@@ -10,6 +10,8 @@ export function configureInteractivePanelPainter(
 }
 
 function isDynamicBorder(line: string): boolean {
+	if (!line.includes("─")) return false;
+
 	const plain = stripAnsi(line);
 	return plain.length > 0 && /^─+$/.test(plain);
 }
@@ -30,9 +32,13 @@ export function paintBorderedPanels(lines: string[], width: number): string[] {
 			continue;
 		}
 
-		const end = lines.findIndex(
-			(line, endIndex) => endIndex > index && isDynamicBorder(line),
-		);
+		let end = -1;
+		for (let endIndex = index + 1; endIndex < lines.length; endIndex++) {
+			if (isDynamicBorder(lines[endIndex])) {
+				end = endIndex;
+				break;
+			}
+		}
 		if (end === -1) {
 			painted.push(lines[index]);
 			continue;
