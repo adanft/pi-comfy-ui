@@ -1,6 +1,6 @@
 {
   "name": "pi-comfy-ui",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Comfortable spacing and panel styling for Pi's interactive TUI.",
   "type": "module",
   "license": "MIT",
@@ -37,8 +37,8 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.74.0 <1",
-    "@earendil-works/pi-tui": ">=0.74.0 <1"
+    "@earendil-works/pi-coding-agent": ">=0.79.0 <1",
+    "@earendil-works/pi-tui": ">=0.79.0 <1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

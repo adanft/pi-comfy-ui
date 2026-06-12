@@ -21,6 +21,8 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 	const patchedTui = patchTuiRender(paintBorderedPanels);
 
 	pi.on("session_start", (_event: unknown, ctx: ExtensionContext) => {
+		if ("mode" in ctx && ctx.mode !== "tui") return;
+
 		if (!patchedTui) {
 			ctx.ui.notify?.(
 				"pi-comfy-ui is disabled: unsupported Pi TUI render API.",

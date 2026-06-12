@@ -23,7 +23,13 @@ type PiComfyTui = TUI & {
 	__piComfyUi?: { paddingX: number };
 };
 
+type ShowOverlay = (component: Component, options?: unknown) => unknown;
+
 const PATCH_FLAG = Symbol.for("pi-comfy-ui.tui-render-patched");
+const OVERLAY_PATCH_FLAG = Symbol.for("pi-comfy-ui.tui-overlay-patched");
+const OVERLAY_RENDER_PATCH_FLAG = Symbol.for(
+	"pi-comfy-ui.overlay-render-patched",
+);
 const DEFAULT_CONTENT_PADDING_X = 1;
 const DEFAULT_EDITOR_PADDING_X = 1;
 const MAX_PADDING_X = 12;
@@ -103,29 +109,77 @@ function padLineX(line: string, pad: string): string {
 	return `${pad}${line}${pad}`;
 }
 
+function renderWithComfyPadding(
+	tui: PiComfyTui,
+	width: number,
+	render: (width: number) => string[],
+	paintLines: (lines: string[], width: number) => string[],
+): string[] {
+	const paddingX = clampPaddingX(tui.__piComfyUi?.paddingX ?? 0, width);
+	const innerWidth = paddingX > 0 ? Math.max(1, width - paddingX * 2) : width;
+	const lines = paintLines(render(innerWidth), innerWidth);
+
+	if (paddingX <= 0) return lines;
+
+	const pad = " ".repeat(paddingX);
+	return lines.map((line) => padLineX(line, pad));
+}
+
+function patchOverlayRender(
+	tui: PiComfyTui,
+	component: Component,
+	paintLines: (lines: string[], width: number) => string[],
+): Component {
+	const record = component as Component & Record<PropertyKey, unknown>;
+	if (record[OVERLAY_RENDER_PATCH_FLAG]) return component;
+
+	const render = component.render.bind(component);
+	component.render = (width: number) =>
+		renderWithComfyPadding(tui, width, render, paintLines);
+	record[OVERLAY_RENDER_PATCH_FLAG] = true;
+	return component;
+}
+
 export function patchTuiRender(
 	paintLines: (lines: string[], width: number) => string[],
 ): boolean {
 	const proto = TUI.prototype as TUI & Record<PropertyKey, unknown>;
-	if (proto[PATCH_FLAG]) return true;
-	if (typeof proto.render !== "function") return false;
+	const protoRecord = proto as Record<PropertyKey, unknown>;
 
-	const originalRender = proto.render as unknown as (width: number) => string[];
-	proto.render = function renderWithComfyPaddingX(
-		this: PiComfyTui,
-		width: number,
-	): string[] {
-		const paddingX = clampPaddingX(this.__piComfyUi?.paddingX ?? 0, width);
-		const innerWidth = paddingX > 0 ? Math.max(1, width - paddingX * 2) : width;
-		const lines = paintLines(originalRender.call(this, innerWidth), innerWidth);
+	if (!proto[PATCH_FLAG]) {
+		if (typeof proto.render !== "function") return false;
 
-		if (paddingX <= 0) return lines;
+		const originalRender = proto.render as unknown as (width: number) => string[];
+		proto.render = function renderWithComfyPaddingX(
+			this: PiComfyTui,
+			width: number,
+		): string[] {
+			return renderWithComfyPadding(
+				this,
+				width,
+				(innerWidth) => originalRender.call(this, innerWidth),
+				paintLines,
+			);
+		} as typeof proto.render;
+		proto[PATCH_FLAG] = true;
+	}
 
-		const pad = " ".repeat(paddingX);
-		return lines.map((line) => padLineX(line, pad));
-	} as typeof proto.render;
+	if (!protoRecord[OVERLAY_PATCH_FLAG] && typeof protoRecord.showOverlay === "function") {
+		const showOverlay = protoRecord.showOverlay as ShowOverlay;
+		protoRecord.showOverlay = function showOverlayWithComfyRender(
+			this: PiComfyTui,
+			component: Component,
+			options?: unknown,
+		): unknown {
+			return showOverlay.call(
+				this,
+				patchOverlayRender(this, component, paintLines),
+				options,
+			);
+		} as ShowOverlay;
+		protoRecord[OVERLAY_PATCH_FLAG] = true;
+	}
 
-	proto[PATCH_FLAG] = true;
 	return true;
 }
 
