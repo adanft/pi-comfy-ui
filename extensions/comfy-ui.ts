@@ -35,6 +35,16 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 		configureInteractivePanelPainter(
 			createBackgroundPainter(ctx.ui.theme, PANEL_BG_TOKEN),
 		);
+		const previousEditorComponent = ctx.ui.getEditorComponent?.();
+		if (previousEditorComponent) {
+			ctx.ui.notify?.(
+				"pi-comfy-ui detected another custom editor extension and will not replace it.",
+				"warning",
+			);
+			refreshActiveTui(ctx);
+			return;
+		}
+
 		const editorPadding = resolveEditorPaddingX(ctx.cwd);
 		ctx.ui.setEditorComponent(
 			(tui, editorTheme, keybindings) =>

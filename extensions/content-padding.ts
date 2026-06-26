@@ -23,8 +23,11 @@ type PiComfyTui = TUI & {
 	__piComfyUi?: { paddingX: number };
 };
 
+type PaintLines = (lines: string[], width: number) => string[];
 type ShowOverlay = (component: Component, options?: unknown) => unknown;
+type PatchState = { paintLines: PaintLines };
 
+const PATCH_STATE = Symbol.for("pi-comfy-ui.tui-render-state");
 const PATCH_FLAG = Symbol.for("pi-comfy-ui.tui-render-patched");
 const OVERLAY_PATCH_FLAG = Symbol.for("pi-comfy-ui.tui-overlay-patched");
 const OVERLAY_RENDER_PATCH_FLAG = Symbol.for(
@@ -125,26 +128,35 @@ function renderWithComfyPadding(
 	return lines.map((line) => padLineX(line, pad));
 }
 
+function resolvePatchState(record: Record<PropertyKey, unknown>): PatchState {
+	const existing = record[PATCH_STATE] as PatchState | undefined;
+	if (existing && typeof existing.paintLines === "function") return existing;
+
+	const state: PatchState = { paintLines: (lines) => lines };
+	record[PATCH_STATE] = state;
+	return state;
+}
+
 function patchOverlayRender(
 	tui: PiComfyTui,
 	component: Component,
-	paintLines: (lines: string[], width: number) => string[],
+	state: PatchState,
 ): Component {
 	const record = component as Component & Record<PropertyKey, unknown>;
 	if (record[OVERLAY_RENDER_PATCH_FLAG]) return component;
 
 	const render = component.render.bind(component);
 	component.render = (width: number) =>
-		renderWithComfyPadding(tui, width, render, paintLines);
+		renderWithComfyPadding(tui, width, render, state.paintLines);
 	record[OVERLAY_RENDER_PATCH_FLAG] = true;
 	return component;
 }
 
-export function patchTuiRender(
-	paintLines: (lines: string[], width: number) => string[],
-): boolean {
+export function patchTuiRender(paintLines: PaintLines): boolean {
 	const proto = TUI.prototype as TUI & Record<PropertyKey, unknown>;
 	const protoRecord = proto as Record<PropertyKey, unknown>;
+	const state = resolvePatchState(protoRecord);
+	state.paintLines = paintLines;
 
 	if (!proto[PATCH_FLAG]) {
 		if (typeof proto.render !== "function") return false;
@@ -158,7 +170,7 @@ export function patchTuiRender(
 				this,
 				width,
 				(innerWidth) => originalRender.call(this, innerWidth),
-				paintLines,
+				state.paintLines,
 			);
 		} as typeof proto.render;
 		proto[PATCH_FLAG] = true;
@@ -173,7 +185,7 @@ export function patchTuiRender(
 		): unknown {
 			return showOverlay.call(
 				this,
-				patchOverlayRender(this, component, paintLines),
+				patchOverlayRender(this, component, state),
 				options,
 			);
 		} as ShowOverlay;

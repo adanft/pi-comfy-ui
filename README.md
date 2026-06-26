@@ -41,6 +41,7 @@ Override either value in Pi settings when you want different spacing:
 - The input/editor background is painted from the active theme token `customMessageBg`.
 - Interactive prompt panels, such as settings, model selection, confirms, selects, and structured questions, are painted from the active theme token `userMessageBg`.
 - The input/editor keeps Pi's original editor border color, but renders that border on the left and right sides only; Pi's native top/bottom editor border is hidden.
+- If another extension already provides a custom editor, pi-comfy-ui keeps that editor and only applies layout/panel styling where possible; it does not replace it.
 - Interactive prompt panels keep Pi's original border line color, but replace the top/bottom border shape with left/right side rails.
 
 Supported aliases for outer layout padding:
