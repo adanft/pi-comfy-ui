@@ -16,6 +16,22 @@ import {
 
 const EDITOR_BG_TOKEN: ThemeBgToken = "customMessageBg";
 const PANEL_BG_TOKEN: ThemeBgToken = "userMessageBg";
+const COMFY_EDITOR_FACTORY = Symbol.for("pi-comfy-ui.editor-factory");
+
+type EditorFactory = NonNullable<
+	ReturnType<ExtensionContext["ui"]["getEditorComponent"]>
+>;
+
+function isComfyEditorFactory(factory: EditorFactory): boolean {
+	return Boolean(
+		(factory as unknown as Record<PropertyKey, unknown>)[COMFY_EDITOR_FACTORY],
+	);
+}
+
+function markComfyEditorFactory(factory: EditorFactory): EditorFactory {
+	(factory as unknown as Record<PropertyKey, unknown>)[COMFY_EDITOR_FACTORY] = true;
+	return factory;
+}
 
 export default function comfyUiExtension(pi: ExtensionAPI) {
 	const patchedTui = patchTuiRender(paintBorderedPanels);
@@ -36,7 +52,10 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 			createBackgroundPainter(ctx.ui.theme, PANEL_BG_TOKEN),
 		);
 		const previousEditorComponent = ctx.ui.getEditorComponent?.();
-		if (previousEditorComponent) {
+		if (
+			previousEditorComponent &&
+			!isComfyEditorFactory(previousEditorComponent)
+		) {
 			ctx.ui.notify?.(
 				"pi-comfy-ui detected another custom editor extension and will not replace it.",
 				"warning",
@@ -47,7 +66,7 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 
 		const editorPadding = resolveEditorPaddingX(ctx.cwd);
 		ctx.ui.setEditorComponent(
-			(tui, editorTheme, keybindings) =>
+			markComfyEditorFactory((tui, editorTheme, keybindings) =>
 				new PanelEditor(
 					tui,
 					editorTheme,
@@ -56,6 +75,7 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 					editorPadding.value,
 					editorPadding.configured,
 				),
+			),
 		);
 		refreshActiveTui(ctx);
 	});
