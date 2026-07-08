@@ -3,12 +3,8 @@ import type {
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { createBackgroundPainter, type ThemeBgToken } from "./ansi.js";
-import {
-	patchTuiRender,
-	refreshActiveTui,
-	resolveEditorPaddingX,
-} from "./content-padding.js";
 import { PanelEditor } from "./editor-input.js";
+import { patchPanelRender } from "./interactive-panel-render.js";
 import {
 	configureInteractivePanelPainter,
 	paintBorderedPanels,
@@ -34,17 +30,15 @@ function markComfyEditorFactory(factory: EditorFactory): EditorFactory {
 }
 
 export default function comfyUiExtension(pi: ExtensionAPI) {
-	const patchedTui = patchTuiRender(paintBorderedPanels);
-
 	pi.on("session_start", (_event: unknown, ctx: ExtensionContext) => {
 		if ("mode" in ctx && ctx.mode !== "tui") return;
 
-		if (!patchedTui) {
+		const patchedPanels = patchPanelRender(paintBorderedPanels);
+		if (!patchedPanels) {
 			ctx.ui.notify?.(
-				"pi-comfy-ui is disabled: unsupported Pi TUI render API.",
+				"pi-comfy-ui interactive panel styling is disabled: unsupported Pi TUI render API.",
 				"warning",
 			);
-			return;
 		}
 
 		const editorBg = createBackgroundPainter(ctx.ui.theme, EDITOR_BG_TOKEN);
@@ -60,23 +54,14 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 				"pi-comfy-ui detected another custom editor extension and will not replace it.",
 				"warning",
 			);
-			refreshActiveTui(ctx);
 			return;
 		}
 
-		const editorPadding = resolveEditorPaddingX(ctx.cwd);
 		ctx.ui.setEditorComponent(
-			markComfyEditorFactory((tui, editorTheme, keybindings) =>
-				new PanelEditor(
-					tui,
-					editorTheme,
-					keybindings,
-					editorBg,
-					editorPadding.value,
-					editorPadding.configured,
-				),
+			markComfyEditorFactory(
+				(tui, editorTheme, keybindings) =>
+					new PanelEditor(tui, editorTheme, keybindings, editorBg),
 			),
 		);
-		refreshActiveTui(ctx);
 	});
 }

@@ -18,16 +18,8 @@ export class PanelEditor extends CustomEditor {
 		theme: EditorTheme,
 		keybindings: KeybindingsManager,
 		private paintBg: BackgroundPainter,
-		private defaultEditorPaddingX: number,
-		private hasConfiguredEditorPaddingX: boolean,
 	) {
-		super(tui, theme, keybindings, { paddingX: defaultEditorPaddingX });
-	}
-
-	setPaddingX(padding: number): void {
-		super.setPaddingX(
-			this.hasConfiguredEditorPaddingX ? padding : this.defaultEditorPaddingX,
-		);
+		super(tui, theme, keybindings);
 	}
 
 	render(width: number): string[] {
