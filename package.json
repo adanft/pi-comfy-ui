@@ -1,6 +1,6 @@
 {
   "name": "pi-comfy-ui",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Comfortable input and interactive panel styling for Pi's TUI.",
   "type": "module",
   "license": "MIT",
