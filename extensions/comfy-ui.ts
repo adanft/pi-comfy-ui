@@ -4,11 +4,14 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { createBackgroundPainter, type ThemeBgToken } from "./ansi.js";
 import { PanelEditor } from "./editor-input.js";
-import { patchPanelRender } from "./interactive-panel-render.js";
+import {
+	patchAskUserQuestionCustomUi,
+	patchPanelRender,
+} from "./interactive-panel-render.js";
 import {
 	configureInteractivePanelPainter,
 	paintBorderedPanels,
-} from "./interactive-input.js";
+} from "./panel-painter.js";
 
 const EDITOR_BG_TOKEN: ThemeBgToken = "customMessageBg";
 const PANEL_BG_TOKEN: ThemeBgToken = "userMessageBg";
@@ -34,6 +37,7 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 		if ("mode" in ctx && ctx.mode !== "tui") return;
 
 		const patchedPanels = patchPanelRender(paintBorderedPanels);
+		patchAskUserQuestionCustomUi(ctx.ui, paintBorderedPanels);
 		if (!patchedPanels) {
 			ctx.ui.notify?.(
 				"pi-comfy-ui interactive panel styling is disabled: unsupported Pi TUI render API.",

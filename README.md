@@ -18,7 +18,7 @@ pi install -l npm:pi-comfy-ui
 
 Then restart Pi, or run `/reload` if Pi is already open.
 
-For project-local installs, Pi loads this extension only after the project is approved/trusted. The first trust prompt itself uses Pi's default styling; pi-comfy-ui applies after approval.
+Project-local installs apply only after Pi has loaded project extensions, so any pre-extension approval UI keeps Pi's default styling.
 
 ## Configure
 
@@ -42,7 +42,7 @@ Padding notes:
 
 - `editorPaddingX` is Pi's native inner input/editor padding.
 - `outputPad` is Pi's native horizontal padding for user messages, assistant messages, and thinking output.
-- pi-comfy-ui no longer supports `contentPaddingX`, `layoutPaddingX`, or `PI_CONTENT_PADDING_X` because Pi already provides native padding settings.
+- pi-comfy-ui no longer supports `contentPaddingX` or `PI_CONTENT_PADDING_X` because Pi already provides native padding settings.
 - Outer terminal padding should be configured in your terminal emulator, for example Ghostty/WezTerm/kitty terminal padding options.
 
 Styling notes:
@@ -57,8 +57,8 @@ Styling notes:
 
 pi-comfy-ui uses Pi's public custom editor API, `ctx.ui.setEditorComponent()`, and extends Pi's `CustomEditor` so app-level keybindings and native `editorPaddingX` behavior continue to work.
 
-Pi does not currently expose a public root-layout wrapper hook for extensions. Earlier versions of pi-comfy-ui used a root render monkey patch for both `contentPaddingX` and interactive panel styling. The root/content padding behavior has been removed.
+Pi does not currently expose a dedicated panel-rendering extension API. Interactive panel styling uses explicit known-path patches: pi-comfy-ui patches known Pi component render methods, selected `InteractiveMode` inline panel methods, and the `ask_user_question` custom UI path. Unknown components and custom UIs are left unchanged.
 
-Interactive panel styling still uses a narrow TUI render patch because Pi does not expose a dedicated panel-rendering extension API yet. That patch only rewrites detected dynamic-border panels into pi-comfy-ui side-rail panels. It does not change render width, does not add outer padding, and does not read `contentPaddingX`.
+These patches do not patch the root TUI render, change render width, or add outer padding.
 
 For transcript/output spacing, use Pi's built-in `outputPad` setting instead of extension-level root padding.

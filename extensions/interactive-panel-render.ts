@@ -1,77 +1,93 @@
-import { TUI, type Component } from "@earendil-works/pi-tui";
+import { Container, TUI, type Component } from "@earendil-works/pi-tui";
+import {
+	patchKnownComponentPrototypes,
+	patchMountedComponent,
+} from "./component-render-patch.js";
+import {
+	patchChatPanelMethods,
+	patchReloadCommandMethod,
+} from "./chat-panel-patches.js";
+import { resolvePanelPatchState } from "./panel-render-state.js";
+import type { AddChild, PaintLines, ShowOverlay } from "./panel-render-types.js";
 
-type PaintLines = (lines: string[], width: number) => string[];
-type ShowOverlay = (component: Component, options?: unknown) => unknown;
-type PatchState = { paintLines: PaintLines };
+export { patchAskUserQuestionCustomUi } from "./ask-user-question-panel.js";
 
-const PATCH_STATE = Symbol.for("pi-comfy-ui.panel-render-state");
-const RENDER_PATCH_FLAG = Symbol.for("pi-comfy-ui.panel-render-patched");
+const TUI_ADD_CHILD_PATCH_FLAG = Symbol.for("pi-comfy-ui.tui-add-child-patched");
 const OVERLAY_PATCH_FLAG = Symbol.for("pi-comfy-ui.panel-overlay-patched");
-const COMPONENT_RENDER_PATCH_FLAG = Symbol.for(
-	"pi-comfy-ui.panel-component-render-patched",
+const CONTAINER_ADD_CHILD_PATCH_FLAG = Symbol.for(
+	"pi-comfy-ui.panel-container-add-child-patched",
 );
 
-function resolvePatchState(record: Record<PropertyKey, unknown>): PatchState {
-	const existing = record[PATCH_STATE] as PatchState | undefined;
-	if (existing && typeof existing.paintLines === "function") return existing;
+function patchAddChildMethod(
+	record: Record<PropertyKey, unknown>,
+	flag: symbol,
+	state: ReturnType<typeof resolvePanelPatchState>,
+): void {
+	if (record[flag]) return;
+	if (typeof record.addChild !== "function") return;
 
-	const state: PatchState = { paintLines: (lines) => lines };
-	record[PATCH_STATE] = state;
-	return state;
+	const addChild = record.addChild as AddChild;
+	record.addChild = function addChildWithPiComfyPanels(
+		this: unknown,
+		component: Component,
+	): void {
+		return addChild.call(
+			this,
+			patchMountedComponent(component, state, () => new Error().stack),
+		);
+	};
+	record[flag] = true;
 }
 
-function paintRenderedLines(
-	width: number,
-	render: (width: number) => string[],
-	paintLines: PaintLines,
-): string[] {
-	return paintLines(render(width), width);
+function patchTuiAddChild(proto: TUI & Record<PropertyKey, unknown>, state: ReturnType<typeof resolvePanelPatchState>): void {
+	patchAddChildMethod(proto, TUI_ADD_CHILD_PATCH_FLAG, state);
 }
 
-function patchComponentRender(component: Component, state: PatchState): Component {
-	const record = component as Component & Record<PropertyKey, unknown>;
-	if (record[COMPONENT_RENDER_PATCH_FLAG]) return component;
+function patchPiTuiContainerAddChild(state: ReturnType<typeof resolvePanelPatchState>): void {
+	patchAddChildMethod(
+		Container.prototype as unknown as Record<PropertyKey, unknown>,
+		CONTAINER_ADD_CHILD_PATCH_FLAG,
+		state,
+	);
+}
 
-	const render = component.render.bind(component);
-	component.render = (width: number) => paintRenderedLines(width, render, state.paintLines);
-	record[COMPONENT_RENDER_PATCH_FLAG] = true;
-	return component;
+function patchOverlayRender(
+	protoRecord: Record<PropertyKey, unknown>,
+	state: ReturnType<typeof resolvePanelPatchState>,
+): boolean {
+	if (typeof protoRecord.showOverlay !== "function") return false;
+	if (protoRecord[OVERLAY_PATCH_FLAG]) return true;
+
+	const showOverlay = protoRecord.showOverlay as ShowOverlay;
+	protoRecord.showOverlay = function showOverlayWithPiComfyPanels(
+		this: TUI,
+		component: Component,
+		options?: unknown,
+	): unknown {
+		const componentWithChildren = component as Component & { children?: Component[] };
+		return showOverlay.call(
+			this,
+			Array.isArray(componentWithChildren.children)
+				? patchMountedComponent(component, state, () => new Error().stack)
+				: component,
+			options,
+		);
+	} as ShowOverlay;
+	protoRecord[OVERLAY_PATCH_FLAG] = true;
+	return true;
 }
 
 export function patchPanelRender(paintLines: PaintLines): boolean {
 	const proto = TUI.prototype as TUI & Record<PropertyKey, unknown>;
 	const protoRecord = proto as Record<PropertyKey, unknown>;
-	const state = resolvePatchState(protoRecord);
+	const state = resolvePanelPatchState(protoRecord);
 	state.paintLines = paintLines;
 
-	if (!protoRecord[RENDER_PATCH_FLAG]) {
-		if (typeof proto.render !== "function") return false;
+	patchKnownComponentPrototypes(state);
+	patchTuiAddChild(proto, state);
+	patchPiTuiContainerAddChild(state);
+	patchChatPanelMethods(state);
+	patchReloadCommandMethod(state);
 
-		const originalRender = proto.render as unknown as (width: number) => string[];
-		proto.render = function renderWithPiComfyPanels(
-			this: TUI,
-			width: number,
-		): string[] {
-			return paintRenderedLines(
-				width,
-				(innerWidth) => originalRender.call(this, innerWidth),
-				state.paintLines,
-			);
-		} as typeof proto.render;
-		protoRecord[RENDER_PATCH_FLAG] = true;
-	}
-
-	if (!protoRecord[OVERLAY_PATCH_FLAG] && typeof protoRecord.showOverlay === "function") {
-		const showOverlay = protoRecord.showOverlay as ShowOverlay;
-		protoRecord.showOverlay = function showOverlayWithPiComfyPanels(
-			this: TUI,
-			component: Component,
-			options?: unknown,
-		): unknown {
-			return showOverlay.call(this, patchComponentRender(component, state), options);
-		} as ShowOverlay;
-		protoRecord[OVERLAY_PATCH_FLAG] = true;
-	}
-
-	return true;
+	return patchOverlayRender(protoRecord, state);
 }
