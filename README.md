@@ -59,6 +59,6 @@ pi-comfy-ui uses Pi's public custom editor API, `ctx.ui.setEditorComponent()`, a
 
 Pi does not currently expose a dedicated panel-rendering extension API. Interactive panel styling uses explicit known-path patches: pi-comfy-ui patches known Pi component render methods, selected `InteractiveMode` inline panel methods, and the `ask_user_question` custom UI path. Unknown components and custom UIs are left unchanged.
 
-These patches do not patch the root TUI render, change render width, or add outer padding.
+Supported styling is limited to exported Pi components, selected InteractiveMode chat/reload paths, and the `ask_user_question` custom UI path. It does not style unexported selectors such as scoped-models or Trust, intercept the root TUI or generic overlays, change render width, or add outer padding.
 
 For transcript/output spacing, use Pi's built-in `outputPad` setting instead of extension-level root padding.

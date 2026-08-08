@@ -2,8 +2,6 @@ import type { Component } from "@earendil-works/pi-tui";
 import {
 	EXPORTED_STYLABLE_COMPONENTS,
 	isKnownExportedComponent,
-	needsPiCoreStack,
-	shouldStyleKnownPiCoreComponent,
 } from "./known-pi-panels.js";
 import type { PatchState, PaintLines } from "./panel-render-types.js";
 
@@ -20,10 +18,12 @@ function paintRenderedLines(
 }
 
 function hasOwnPatchFlag(record: Record<PropertyKey, unknown>): boolean {
-	return Object.prototype.hasOwnProperty.call(record, COMPONENT_RENDER_PATCH_FLAG);
+	return Object.hasOwn(record, COMPONENT_RENDER_PATCH_FLAG);
 }
 
-export function isPromiseLikeComponent<T>(value: T | Promise<T>): value is Promise<T> {
+export function isPromiseLikeComponent<T>(
+	value: T | Promise<T>,
+): value is Promise<T> {
 	return typeof (value as { then?: unknown }).then === "function";
 }
 
@@ -45,7 +45,8 @@ function patchComponentPrototype(
 	componentClass: { prototype: Component },
 	state: PatchState,
 ): void {
-	const proto = componentClass.prototype as Component & Record<PropertyKey, unknown>;
+	const proto = componentClass.prototype as Component &
+		Record<PropertyKey, unknown>;
 	if (hasOwnPatchFlag(proto)) return;
 
 	const render = proto.render;
@@ -72,7 +73,6 @@ export function patchKnownComponentPrototypes(state: PatchState): void {
 export function patchMountedComponent(
 	component: Component,
 	state: PatchState,
-	stackProvider?: () => string | undefined,
 ): Component {
 	const record = component as Component & Record<PropertyKey, unknown>;
 	const componentProto = Object.getPrototypeOf(component) as
@@ -81,10 +81,7 @@ export function patchMountedComponent(
 	const hasOwnPrototypePatch = Boolean(
 		componentProto && hasOwnPatchFlag(componentProto),
 	);
-	const stylableComponent =
-		isKnownExportedComponent(component) ||
-		(needsPiCoreStack(component) &&
-			shouldStyleKnownPiCoreComponent(component, stackProvider?.()));
+	const stylableComponent = isKnownExportedComponent(component);
 	if (stylableComponent && !hasOwnPatchFlag(record) && !hasOwnPrototypePatch) {
 		return patchComponentRender(component, state);
 	}

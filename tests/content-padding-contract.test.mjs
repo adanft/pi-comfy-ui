@@ -36,5 +36,5 @@ assert.match(readme, /does not read, set, or override Pi padding settings/);
 assert.match(readme, /"editorPaddingX": 1/);
 assert.match(readme, /"outputPad": 1/);
 assert.match(readme, /no longer supports/);
-assert.match(packageJson, /@earendil-works\/pi-coding-agent": ">=0\.80\.3 <1"/);
-assert.match(packageJson, /@earendil-works\/pi-tui": ">=0\.80\.3 <1"/);
+assert.match(packageJson, /@earendil-works\/pi-coding-agent": ">=0\.84\.1 <0\.85\.0"/);
+assert.match(packageJson, /@earendil-works\/pi-tui": ">=0\.84\.1 <0\.85\.0"/);

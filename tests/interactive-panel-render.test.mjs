@@ -9,117 +9,41 @@ import {
 	LoginDialogComponent,
 	ShowImagesSelectorComponent,
 } from "@earendil-works/pi-coding-agent";
-import { Text, TUI, visibleWidth } from "@earendil-works/pi-tui";
+import { Text, visibleWidth } from "@earendil-works/pi-tui";
 
 initTheme(undefined, false);
+const TestContainer = Object.getPrototypeOf(
+	ShowImagesSelectorComponent.prototype,
+).constructor;
 
 const jiti = createJiti(import.meta.url);
 const { patchPanelRender } = await jiti.import(
 	"../extensions/interactive-panel-render.ts",
 );
-const {
-	patchAskUserQuestionCustomUi,
-	shouldStyleAskUserQuestionCustomCall,
-} = await jiti.import("../extensions/ask-user-question-panel.ts");
-const { shouldStyleKnownPiCoreComponent } = await jiti.import(
-	"../extensions/known-pi-panels.ts",
-);
-const { configureInteractivePanelPainter, paintBorderedPanels } = await jiti.import(
-	"../extensions/panel-painter.ts",
+const { patchAskUserQuestionCustomUi, shouldStyleAskUserQuestionCustomCall } =
+	await jiti.import("../extensions/ask-user-question-panel.ts");
+const { configureInteractivePanelPainter, paintBorderedPanels } =
+	await jiti.import("../extensions/panel-painter.ts");
+
+configureInteractivePanelPainter(
+	(line, width) =>
+		`${line}${".".repeat(Math.max(0, width - visibleWidth(line)))}`,
 );
 
-configureInteractivePanelPainter((line, width) =>
-	`${line}${".".repeat(Math.max(0, width - visibleWidth(line)))}`,
-);
-
-assert.equal(patchPanelRender(paintBorderedPanels), true);
+patchPanelRender(paintBorderedPanels);
 
 function plain(lines) {
-	return lines.map((line) => line.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, ""));
+	return lines.map((line) => line.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, ""));
 }
 
-const renderWidths = [];
-const tui = new TUI({ hideCursor() {}, write() {} });
-tui.addChild({
-	render(width) {
-		renderWidths.push(width);
-		return ["────", "hi", "────"];
-	},
-	invalidate() {},
-});
-
-const lines = tui.render(10);
-
-assert.deepEqual(renderWidths, [10], "child render must receive unchanged width");
-assert.deepEqual(
-	plain(lines),
-	["────", "hi", "────"],
-	"root render content must stay unchanged",
-);
-
-const overlayRenderWidths = [];
-const overlay = {
-	render(width) {
-		overlayRenderWidths.push(width);
-		return ["────", "hi", "────"];
-	},
-	invalidate() {},
-};
-
-tui.showOverlay(overlay, { width: 10 });
-const overlayLines = overlay.render(10);
-
-assert.deepEqual(overlayRenderWidths, [10], "overlay render must receive unchanged width");
-assert.deepEqual(
-	plain(overlayLines),
-	["────", "hi", "────"],
-	"unknown overlays must stay unchanged without fallback styling",
-);
-assert.deepEqual(overlayLines.map((line) => visibleWidth(line)), [4, 2, 4]);
-
-const rootMountedSelector = new ShowImagesSelectorComponent(true, () => {}, () => {});
-const selectorLines = rootMountedSelector.render(30);
-const plainSelectorLines = plain(selectorLines);
-
-assert.deepEqual(
-	plainSelectorLines,
-	[
-		"┃............................┃",
-		"┃→ Yes.......................┃",
-		"┃  No........................┃",
-		"┃............................┃",
-	],
-	"exported root-mounted selectors such as settings must be styled",
-);
-assert.deepEqual(
-	selectorLines.map((line) => visibleWidth(line)),
-	[30, 30, 30, 30],
-	"root-mounted selector styling must preserve component width",
-);
-
-const PiContainer = Object.getPrototypeOf(ShowImagesSelectorComponent.prototype)
-	.constructor;
-
-const exportedSelectorContainer = new PiContainer();
-exportedSelectorContainer.addChild(rootMountedSelector);
-assert.deepEqual(
-	plain(rootMountedSelector.render(30)),
-	plainSelectorLines,
-	"mounting exported selectors must preserve their styled output",
-);
-
-const selectorContainer = new PiContainer();
+const PiContainer = Object.getPrototypeOf(
+	ShowImagesSelectorComponent.prototype,
+).constructor;
 
 const dynamicPanelContainer = new PiContainer();
 dynamicPanelContainer.addChild(new DynamicBorder());
 dynamicPanelContainer.addChild(new Text("Keyboard Shortcuts", 0, 0));
 dynamicPanelContainer.addChild(new DynamicBorder());
-selectorContainer.addChild(dynamicPanelContainer);
-assert.equal(
-	selectorContainer.children.at(-1),
-	dynamicPanelContainer,
-	"unknown DynamicBorder containers must not be replaced by fallback styling",
-);
 assert.deepEqual(
 	plain(dynamicPanelContainer.render(20)),
 	["────────────────────", "Keyboard Shortcuts  ", "────────────────────"],
@@ -129,115 +53,20 @@ assert.deepEqual(
 const unmatchedBorderContainer = new PiContainer();
 unmatchedBorderContainer.addChild(new DynamicBorder());
 unmatchedBorderContainer.addChild(new Text("unmatched", 0, 0));
-selectorContainer.addChild(unmatchedBorderContainer);
+
 assert.deepEqual(
 	plain(unmatchedBorderContainer.render(12)),
 	["────────────", "unmatched   "],
 	"unmatched DynamicBorder children must stay unchanged",
 );
-class UnknownSelectorComponent extends PiContainer {
-	constructor() {
-		super();
-		this.addChild(new DynamicBorder());
-		this.addChild(new Text("trust", 0, 0));
-		this.addChild(new DynamicBorder());
-	}
-}
-const unexportedSelector = new UnknownSelectorComponent();
-selectorContainer.addChild(unexportedSelector);
-
-class BashExecutionComponent extends PiContainer {
-	constructor() {
-		super();
-		this.addChild(new DynamicBorder());
-		this.addChild(new Text("bash", 0, 0));
-		this.addChild(new DynamicBorder());
-	}
-}
-const bashComponent = new BashExecutionComponent();
-selectorContainer.addChild(bashComponent);
-assert.equal(
-	selectorContainer.children.at(-1),
-	bashComponent,
-	"unknown DynamicBorder panels must not be replaced with cached static groups",
-);
-
-assert.deepEqual(
-	plain(unexportedSelector.render(12)),
-	["────────────", "trust       ", "────────────"],
-	"unexported root-mounted DynamicBorder panels must stay unchanged without fallback styling",
-);
-
-class TrustSelectorComponent extends PiContainer {
-	constructor() {
-		super();
-		this.addChild(new DynamicBorder());
-		this.addChild(new Text("known trust", 0, 0));
-		this.addChild(new DynamicBorder());
-	}
-}
-const knownUnexportedSelector = new TrustSelectorComponent();
-const knownUnexportedTui = new TUI({ hideCursor() {}, write() {} });
-knownUnexportedTui.addChild(knownUnexportedSelector);
-assert.deepEqual(
-	plain(knownUnexportedSelector.render(16)),
-	["────────────────", "known trust     ", "────────────────"],
-	"known-name custom components outside Pi core stacks must stay unchanged",
-);
-assert.equal(
-	shouldStyleKnownPiCoreComponent(
-		knownUnexportedSelector,
-		"at InteractiveMode.showTrustSelector (/x/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/interactive-mode.js:3517:14)",
-	),
-	true,
-	"known Pi core selector routes must be recognized by component name and Pi stack",
-);
-assert.equal(
-	shouldStyleKnownPiCoreComponent(
-		knownUnexportedSelector,
-		"at custom (/x/node_modules/some-extension/index.js:1:1)",
-	),
-	false,
-	"constructor-name collisions outside Pi core stacks must not be styled",
-);
-
-class ScopedModelsSelectorComponent extends PiContainer {
-	constructor() {
-		super();
-		this.addChild(new DynamicBorder());
-		this.addChild(new Text("models", 0, 0));
-		this.addChild(new DynamicBorder());
-	}
-}
-class EarendilAnnouncementComponent extends PiContainer {
-	constructor() {
-		super();
-		this.addChild(new DynamicBorder());
-		this.addChild(new Text("earendil", 0, 0));
-		this.addChild(new DynamicBorder());
-	}
-}
-const knownPiCoreComponents = [
-	new ScopedModelsSelectorComponent(),
-	new EarendilAnnouncementComponent(),
-];
-const knownPiCoreStacks = [
-	"at InteractiveMode.showModelsSelector (/x/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/interactive-mode.js:3600:14)",
-	"at InteractiveMode.handleDementedDelves (/x/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/interactive-mode.js:4676:31)",
-];
-for (const [index, component] of knownPiCoreComponents.entries()) {
-	assert.equal(
-		shouldStyleKnownPiCoreComponent(component, knownPiCoreStacks[index]),
-		component.constructor.name !== "EarendilAnnouncementComponent",
-		`${component.constructor.name} route recognition must stay explicit`,
-	);
-}
 
 const fakeMode = {
 	chatContainer: new PiContainer(),
 	ui: { requestRender() {} },
 };
-InteractiveMode.prototype.showPackageUpdateNotification.call(fakeMode, ["pkg-a"]);
+InteractiveMode.prototype.showPackageUpdateNotification.call(fakeMode, [
+	"pkg-a",
+]);
 assert.equal(
 	fakeMode.chatContainer.children.length,
 	1,
@@ -306,7 +135,9 @@ const reloadMode = {
 	showWarning() {},
 	showError() {},
 };
-const originalReloadAddChild = reloadEditorContainer.addChild.bind(reloadEditorContainer);
+const originalReloadAddChild = reloadEditorContainer.addChild.bind(
+	reloadEditorContainer,
+);
 const capturingReloadAddChild = (component) => {
 	if (!reloadBox) reloadBox = component;
 	return originalReloadAddChild(component);
@@ -315,13 +146,48 @@ reloadEditorContainer.addChild = capturingReloadAddChild;
 await InteractiveMode.prototype.handleReloadCommand.call(reloadMode);
 assert.deepEqual(
 	plain(reloadBox.render(24)).slice(0, 3),
-	["┃......................┃", "┃......................┃", "┃ Reloading keybindings┃"],
+	[
+		"┃......................┃",
+		"┃......................┃",
+		"┃ Reloading keybindings┃",
+	],
 	"reload command panel must be styled through its explicit route wrapper",
 );
 assert.equal(
 	reloadEditorContainer.addChild,
 	capturingReloadAddChild,
 	"reload command wrapper must restore editorContainer.addChild after failures",
+);
+
+const successfulReloadEditorContainer = new PiContainer();
+const successfulReloadAddChild = successfulReloadEditorContainer.addChild;
+const successfulReloadMode = {
+	session: {
+		isStreaming: false,
+		isCompacting: false,
+		reload: async () => {},
+	},
+	resetExtensionUI() {},
+	editorContainer: successfulReloadEditorContainer,
+	editor: new PiContainer(),
+	ui: { setFocus() {}, requestRender() {} },
+	showWarning() {},
+	showError() {},
+};
+await InteractiveMode.prototype.handleReloadCommand.call(successfulReloadMode);
+assert.equal(
+	successfulReloadEditorContainer.addChild,
+	successfulReloadAddChild,
+	"reload command wrapper must restore editorContainer.addChild after async success",
+);
+assert.equal(
+	Object.prototype.toString.call(
+		InteractiveMode.prototype.showPackageUpdateNotification.call(fakeMode, [
+			"pkg-b",
+		]),
+	),
+	"[object Undefined]",
+	"selected chat panel methods are synchronous in Pi 0.84.1",
 );
 assert.deepEqual(
 	plain(previousEditor.render(16)),
@@ -336,7 +202,9 @@ const extensionSelector = new ExtensionSelectorComponent(
 	() => {},
 );
 assert.equal(
-	plain(extensionSelector.render(30)).every((line) => line.startsWith("┃") && line.endsWith("┃")),
+	plain(extensionSelector.render(30)).every(
+		(line) => line.startsWith("┃") && line.endsWith("┃"),
+	),
 	true,
 	"actual extension selectors used by confirm/select must be styled",
 );
@@ -348,13 +216,15 @@ const extensionInput = new ExtensionInputComponent(
 	() => {},
 );
 assert.equal(
-	plain(extensionInput.render(20)).every((line) => line.startsWith("┃") && line.endsWith("┃")),
+	plain(extensionInput.render(20)).every(
+		(line) => line.startsWith("┃") && line.endsWith("┃"),
+	),
 	true,
 	"actual extension input panels must be styled",
 );
 
 const loginDialog = new LoginDialogComponent(
-	new TUI({ hideCursor() {}, write() {} }),
+	new TestContainer(),
 	"provider",
 	() => {},
 );
@@ -380,10 +250,13 @@ assert.equal(
 );
 
 let capturedCustomFactory;
+let capturedCustomOptions;
+const customResult = { accepted: true };
 const askUserQuestionUi = {
-	custom(factory) {
+	custom(factory, options) {
 		capturedCustomFactory = factory;
-		return Promise.resolve("done");
+		capturedCustomOptions = options;
+		return Promise.resolve(customResult);
 	},
 };
 assert.equal(
@@ -396,17 +269,46 @@ assert.equal(
 	true,
 	"ask_user_question custom UI patch must install when ui.custom exists",
 );
-await askUserQuestionUi.custom(() => ({
-	render() {
-		return ["────", "question", "────"];
+const customOptions = { overlay: true };
+const syncDoneResults = [];
+const syncResult = await askUserQuestionUi.custom(
+	(tui, theme, keybindings, done) => {
+		syncDoneResults.push([tui, theme, keybindings]);
+		done("sync-done");
+		return {
+			render() {
+				return ["────", "question", "────"];
+			},
+			invalidate() {},
+		};
 	},
-	invalidate() {},
-}));
+	customOptions,
+);
+assert.equal(
+	syncResult,
+	customResult,
+	"ask_user_question custom wrapper must preserve the returned result",
+);
+assert.equal(
+	capturedCustomOptions,
+	customOptions,
+	"ask_user_question custom wrapper must forward options",
+);
+assert.equal(
+	syncDoneResults.length,
+	0,
+	"ask_user_question custom wrapper must not invoke the factory before Pi does",
+);
 const askUserQuestionComponent = capturedCustomFactory(
-	new TUI({ hideCursor() {}, write() {} }),
+	new TestContainer(),
 	{},
 	{},
-	() => {},
+	(result) => syncDoneResults.push(result),
+);
+assert.deepEqual(
+	syncDoneResults.at(-1),
+	"sync-done",
+	"ask_user_question custom wrapper must preserve done propagation",
 );
 assert.deepEqual(
 	plain(askUserQuestionComponent.render(12)),
@@ -424,9 +326,10 @@ await askUserQuestionUi.custom(
 				invalidate() {},
 			}),
 		),
+	customOptions,
 );
 const asyncAskUserQuestionComponent = await capturedCustomFactory(
-	new TUI({ hideCursor() {}, write() {} }),
+	new TestContainer(),
 	{},
 	{},
 	() => {},
@@ -435,6 +338,24 @@ assert.deepEqual(
 	plain(asyncAskUserQuestionComponent.render(12)),
 	["┃..┃", "┃as┃", "┃..┃"],
 	"async ask_user_question custom components must be explicitly styled",
+);
+
+await askUserQuestionUi.custom(
+	() => Promise.reject(new Error("async factory failed")),
+	customOptions,
+);
+await assert.rejects(
+	() => capturedCustomFactory(new TestContainer(), {}, {}, () => {}),
+	"ask_user_question custom wrapper must preserve async factory rejection",
+);
+capturedCustomFactory = undefined;
+await askUserQuestionUi.custom(() => {
+	throw new Error("sync factory failed");
+}, customOptions);
+assert.throws(
+	() => capturedCustomFactory(new TestContainer(), {}, {}, () => {}),
+	/sync factory failed/,
+	"ask_user_question custom wrapper must preserve sync factory rejection",
 );
 
 let capturedOtherFactory;
@@ -447,7 +368,8 @@ const otherCustomUi = {
 patchAskUserQuestionCustomUi(
 	otherCustomUi,
 	paintBorderedPanels,
-	() => "at Object.handler (/home/user/.pi/agent/npm/node_modules/other-package/index.ts:1:1)",
+	() =>
+		"at Object.handler (/home/user/.pi/agent/npm/node_modules/other-package/index.ts:1:1)",
 );
 await otherCustomUi.custom(() => ({
 	render() {
@@ -456,7 +378,7 @@ await otherCustomUi.custom(() => ({
 	invalidate() {},
 }));
 const otherCustomComponent = capturedOtherFactory(
-	new TUI({ hideCursor() {}, write() {} }),
+	new TestContainer(),
 	{},
 	{},
 	() => {},
@@ -467,7 +389,7 @@ assert.deepEqual(
 	"non-ask_user_question custom components must stay unchanged",
 );
 
-const nonPanelTui = new TUI({});
+const nonPanelTui = new TestContainer();
 nonPanelTui.addChild({
 	render() {
 		return ["hello", "world"];

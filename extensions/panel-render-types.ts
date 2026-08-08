@@ -1,8 +1,6 @@
-import { TUI, type Component } from "@earendil-works/pi-tui";
+import type { Component, TUI } from "@earendil-works/pi-tui";
 
 export type PaintLines = (lines: string[], width: number) => string[];
-export type ShowOverlay = (component: Component, options?: unknown) => unknown;
-export type AddChild = (component: Component) => void;
 export type PatchState = { paintLines: PaintLines };
 export type ChatPanelMethod = (...args: unknown[]) => unknown;
 
@@ -21,7 +19,10 @@ export type CustomFactory<T> = (
 ) => CustomComponent | Promise<CustomComponent>;
 
 export type CustomUi = {
-	custom?<T>(factory: CustomFactory<T>, options?: CustomOverlayOptions): Promise<T>;
+	custom?<T>(
+		factory: CustomFactory<T>,
+		options?: CustomOverlayOptions,
+	): Promise<T>;
 };
 
 export type PatchableCustomUi = CustomUi & Record<PropertyKey, unknown>;

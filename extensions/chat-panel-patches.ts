@@ -5,10 +5,16 @@ import {
 import type { Component } from "@earendil-works/pi-tui";
 import { patchComponentRender } from "./component-render-patch.js";
 import { CHAT_PANEL_METHODS } from "./known-pi-panels.js";
-import type { AddChild, ChatPanelMethod, PaintLines, PatchState } from "./panel-render-types.js";
+import type {
+	ChatPanelMethod,
+	PaintLines,
+	PatchState,
+} from "./panel-render-types.js";
 
 const CHAT_METHOD_PATCH_FLAG = Symbol.for("pi-comfy-ui.chat-methods-patched");
-const RELOAD_METHOD_PATCH_FLAG = Symbol.for("pi-comfy-ui.reload-method-patched");
+const RELOAD_METHOD_PATCH_FLAG = Symbol.for(
+	"pi-comfy-ui.reload-method-patched",
+);
 
 class PiComfyPanelGroup implements Component {
 	private cachedWidth: number | undefined;
@@ -40,19 +46,29 @@ class PiComfyPanelGroup implements Component {
 	}
 }
 
-function wrapAppendedChatPanel(target: unknown, start: number, state: PatchState): void {
-	const chatContainer = (target as { chatContainer?: { children?: Component[] } })
-		.chatContainer;
+function wrapAppendedChatPanel(
+	target: unknown,
+	start: number,
+	state: PatchState,
+): void {
+	const chatContainer = (
+		target as { chatContainer?: { children?: Component[] } }
+	).chatContainer;
 	const children = chatContainer?.children;
 	if (!Array.isArray(children) || start >= children.length) return;
 
 	const appended = children.slice(start);
 	if (appended.length === 0) return;
-	children.splice(start, appended.length, new PiComfyPanelGroup(appended, state.paintLines));
+	children.splice(
+		start,
+		appended.length,
+		new PiComfyPanelGroup(appended, state.paintLines),
+	);
 }
 
 function isReloadStatusPanel(component: Component): boolean {
-	const children = (component as Component & { children?: Component[] }).children;
+	const children = (component as Component & { children?: Component[] })
+		.children;
 	return (
 		component.constructor?.name === "Container" &&
 		Array.isArray(children) &&
@@ -62,14 +78,19 @@ function isReloadStatusPanel(component: Component): boolean {
 			const text = (child as { text?: unknown }).text;
 			return (
 				typeof text === "string" &&
-				text.includes("Reloading keybindings, extensions, skills, prompts, themes")
+				text.includes(
+					"Reloading keybindings, extensions, skills, prompts, themes",
+				)
 			);
 		})
 	);
 }
 
 export function patchChatPanelMethods(state: PatchState): void {
-	const proto = InteractiveMode.prototype as unknown as Record<PropertyKey, unknown>;
+	const proto = InteractiveMode.prototype as unknown as Record<
+		PropertyKey,
+		unknown
+	>;
 	if (proto[CHAT_METHOD_PATCH_FLAG]) return;
 
 	for (const methodName of CHAT_PANEL_METHODS) {
@@ -91,15 +112,21 @@ export function patchChatPanelMethods(state: PatchState): void {
 }
 
 export function patchReloadCommandMethod(state: PatchState): void {
-	const proto = InteractiveMode.prototype as unknown as Record<PropertyKey, unknown>;
+	const proto = InteractiveMode.prototype as unknown as Record<
+		PropertyKey,
+		unknown
+	>;
 	if (proto[RELOAD_METHOD_PATCH_FLAG]) return;
 
 	const original = proto.handleReloadCommand;
 	if (typeof original !== "function") return;
 
-	proto.handleReloadCommand = function piComfyReloadPanelWrapper(this: {
-		editorContainer?: { addChild?: AddChild };
-	}, ...args: unknown[]): unknown {
+	proto.handleReloadCommand = function piComfyReloadPanelWrapper(
+		this: {
+			editorContainer?: { addChild?: (component: Component) => void };
+		},
+		...args: unknown[]
+	): unknown {
 		const editorContainer = this.editorContainer;
 		if (!editorContainer || typeof editorContainer.addChild !== "function") {
 			return (original as ChatPanelMethod).apply(this, args);
@@ -112,7 +139,7 @@ export function patchReloadCommandMethod(state: PatchState): void {
 				isReloadStatusPanel(component)
 					? patchComponentRender(component, state)
 					: component,
-			)) as AddChild;
+			)) as (component: Component) => void;
 		try {
 			const result = (original as ChatPanelMethod).apply(this, args);
 			if (typeof (result as { finally?: unknown })?.finally === "function") {

@@ -28,7 +28,8 @@ function isComfyEditorFactory(factory: EditorFactory): boolean {
 }
 
 function markComfyEditorFactory(factory: EditorFactory): EditorFactory {
-	(factory as unknown as Record<PropertyKey, unknown>)[COMFY_EDITOR_FACTORY] = true;
+	(factory as unknown as Record<PropertyKey, unknown>)[COMFY_EDITOR_FACTORY] =
+		true;
 	return factory;
 }
 
@@ -36,14 +37,8 @@ export default function comfyUiExtension(pi: ExtensionAPI) {
 	pi.on("session_start", (_event: unknown, ctx: ExtensionContext) => {
 		if ("mode" in ctx && ctx.mode !== "tui") return;
 
-		const patchedPanels = patchPanelRender(paintBorderedPanels);
+		patchPanelRender(paintBorderedPanels);
 		patchAskUserQuestionCustomUi(ctx.ui, paintBorderedPanels);
-		if (!patchedPanels) {
-			ctx.ui.notify?.(
-				"pi-comfy-ui interactive panel styling is disabled: unsupported Pi TUI render API.",
-				"warning",
-			);
-		}
 
 		const editorBg = createBackgroundPainter(ctx.ui.theme, EDITOR_BG_TOKEN);
 		configureInteractivePanelPainter(

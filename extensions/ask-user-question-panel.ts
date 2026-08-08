@@ -1,4 +1,4 @@
-import { TUI } from "@earendil-works/pi-tui";
+import type { TUI } from "@earendil-works/pi-tui";
 import {
 	isPromiseLikeComponent,
 	patchComponentRender,
@@ -16,10 +16,11 @@ import { resolvePanelPatchState } from "./panel-render-state.js";
 const ASK_USER_QUESTION_CUSTOM_PATCH_FLAG = Symbol.for(
 	"pi-comfy-ui.ask-user-question-custom-patched",
 );
-const ASK_USER_QUESTION_PACKAGE_SEGMENT =
-	"@juicesharp/rpiv-ask-user-question";
+const ASK_USER_QUESTION_PACKAGE_SEGMENT = "@juicesharp/rpiv-ask-user-question";
 
-export function shouldStyleAskUserQuestionCustomCall(stack: string | undefined): boolean {
+export function shouldStyleAskUserQuestionCustomCall(
+	stack: string | undefined,
+): boolean {
 	return Boolean(stack?.includes(ASK_USER_QUESTION_PACKAGE_SEGMENT));
 }
 
@@ -42,13 +43,24 @@ export function patchAskUserQuestionCustomUi(
 		const shouldStyle = shouldStyleAskUserQuestionCustomCall(stackProvider());
 		if (!shouldStyle) return custom(factory, options);
 
-		return custom((tui: TUI, theme: unknown, keybindings: unknown, done: (result: T) => void) => {
-			const component = factory(tui, theme, keybindings, done);
-			if (isPromiseLikeComponent(component)) {
-				return component.then((resolved) => patchComponentRender(resolved, state) as CustomComponent);
-			}
-			return patchComponentRender(component, state) as CustomComponent;
-		}, options);
+		return custom(
+			(
+				tui: TUI,
+				theme: unknown,
+				keybindings: unknown,
+				done: (result: T) => void,
+			) => {
+				const component = factory(tui, theme, keybindings, done);
+				if (isPromiseLikeComponent(component)) {
+					return component.then(
+						(resolved) =>
+							patchComponentRender(resolved, state) as CustomComponent,
+					);
+				}
+				return patchComponentRender(component, state) as CustomComponent;
+			},
+			options,
+		);
 	};
 	record[ASK_USER_QUESTION_CUSTOM_PATCH_FLAG] = true;
 	return true;

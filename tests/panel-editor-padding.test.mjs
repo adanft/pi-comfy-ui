@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { createJiti } from "jiti";
-import { TUI, visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 const jiti = createJiti(import.meta.url);
 const { PanelEditor } = await jiti.import("../extensions/editor-input.ts");
@@ -17,7 +17,7 @@ const editorTheme = {
 	},
 };
 
-const tui = new TUI({ requestRender() {}, write() {}, hideCursor() {} });
+const tui = { requestRender() {}, terminal: { rows: 24 } };
 const editor = new PanelEditor(
 	tui,
 	editorTheme,
