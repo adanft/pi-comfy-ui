@@ -20,6 +20,7 @@ pnpm-debug.log*
 # Local agent runtime state
 .atl/
 .agents/
+.codegraph/
 .pi/
 .pi-lens/
 
